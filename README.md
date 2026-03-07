@@ -1,1 +1,1 @@
-# BDG_Net
+# GenDiff
