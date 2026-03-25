@@ -12,7 +12,7 @@ Official implementation of the paper:
 
 ---
 
-## 1. Project Descriptionz
+## 1. Project Description
 Low-dose CT (LDCT) imaging is essential for reducing radiation exposure but introduces significant noise and structural degradation. While deep learning methods have shown promising results, most approaches struggle with generalization across dose levels and fail to incorporate underlying imaging physics. We propose GenDiff, a dose-aware cold diffusion framework with explicit physics-consistency constraints, enabling robust reconstruction across diverse clinical conditions.
 
 **Core features :**
