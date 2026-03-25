@@ -1,0 +1,32 @@
+seed: 42
+run_name: encoder_pretrain
+device: cuda
+num_workers: 4
+amp: true
+output_dir: runs
+
+data:
+  root: /path/to/processed_data
+  train_split: train
+  val_split: val
+  anatomy_map:
+    abdomen: 0
+    chest: 1
+    head: 2
+  hu_min: -1024.0
+  hu_max: 1024.0
+
+model:
+  in_channels: 1
+  base_channels: 32
+  embedding_dim: 128
+
+train:
+  batch_size: 8
+  epochs: 30
+  lr: 1.0e-4
+  weight_decay: 1.0e-4
+  grad_clip_norm: 1.0
+  lambda_rank: 0.2
+  lambda_anat: 1.0
+  temperature: 0.1
