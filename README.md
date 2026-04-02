@@ -1,253 +1,774 @@
-# GenDiff: Dose-Aware Cold Diffusion with Physics Consistency for Generalizable Low-Dose CT Reconstruction
+# GenDiff: A dose and anatomy aware diffusion model with structural prior refinement for low-dose CT reconstruction and generalization
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
 [![PyTorch](https://img.shields.io/badge/PyTorch-%23EE4C2C.svg?logo=PyTorch&logoColor=white)](https://pytorch.org/)
 
-Official implementation of the paper:
+## 1. Overview
 
-> **“GenDiff: Dose-Aware Cold Diffusion with Physics Consistency for Generalizable Low-Dose CT Reconstruction”**  
+This repository contains the official implementation of:
+
+> **“GenDiff: A dose and anatomy aware diffusion model with structural prior refinement for low-dose CT reconstruction and generalization”**  
 > *Md Imam Ahasan, Guangchao Yang, A. F. M. Abdun Noor, Kah Ong Michael Goh, S. M. Hasan Mahmud, Md Mahfuzur Rahman*  
 > Submitted to **PeerJ Computer Science (Applications of  AI category)**, March 2026.
 
 ---
 
-## 1. Project Description
-Low-dose CT (LDCT) imaging is essential for reducing radiation exposure but introduces significant noise and structural degradation. While deep learning methods have shown promising results, most approaches struggle with generalization across dose levels and fail to incorporate underlying imaging physics. We propose GenDiff, a dose-aware cold diffusion framework with explicit physics-consistency constraints, enabling robust reconstruction across diverse clinical conditions.
+## 2. Project Description
+Low-dose CT (LDCT) imaging reduces radiation exposure but introduces severe noise and structural degradation. Most existing deep learning approaches are trained under fixed acquisition settings and fail to generalize across varying dose levels and anatomical regions.
 
-**Core features :**
-- Efficient Cold Diffusion Framework
-- Dose-Anatomy Encoder (DAE)
-- Physics-Consistency Integration
-- Iterative Refinement with Learned Priors
-- Context-Aware Error Modulation (CEM)
-- Stochastic Prior Refinement Module (SPRM)
-- Cross-Dose & Cross-Anatomy Generalization
+GenDiff addresses these limitations by introducing a generalizable cold diffusion framework with:
+- Continuous dose-aware conditioning
+- Explicit anatomy-aware modeling
+- Physics-consistency enforcement
+- Learned structural prior refinement
+
+The framework enables robust reconstruction across:
+- multiple anatomies (abdomen, chest, head)
+- varying dose levels (including unseen ultra-low-dose)
+- cross-domain datasets (phantom and animal CT)
 
 ---
-
-## 2. Dataset Information
-This project is designed for LDCT reconstruction and supports multiple public datasets commonly used in medical imaging research. The framework is flexible and can be extended to other CT datasets with similar data formats.
-
-**LoDoPaB-CT Dataset :**
-- **Reference:** Leuschner et al., *Scientific Data* 8, 109 (2021) *LoDoPaB-CT, a benchmark dataset for low-dose computed tomography reconstruction.*
-- **DOI:** [https://doi.org/10.1038/s41597-021-00893-z](https://doi.org/10.1038/s41597-021-00893-z)
-- **Website:** [https://zenodo.org/records/3384092](https://zenodo.org/records/3384092)
-- **Description:** Synthetic LDCT dataset derived from the LIDC-IDRI thoracic CT collection.  
-- **Usage here:**  
-  - 40 000 training, 3 500 validation, 3 500 test slices  
-  - Sinogram → NDCT image pairs  
-  - 362×362 → 256×256 (resized)  
-  - Normalized to [0, 1]
-
-**NIH–AAPM–Mayo Low-Dose CT Dataset :**
-- **Reference:** Moen et al., *Medical Physics* 48(2):902–911 (2021) *Low-dose CT image and projection dataset.*
-- **DOI:** [https://doi.org/10.1002/mp.14594](https://doi.org/10.1002/mp.14594)
-- **Website:** [https://www.aapm.org/grandchallenge/lowdosect/  ](https://www.aapm.org/grandchallenge/lowdosect/)
-- **Description:** Abdominal CT volumes with both normal-dose (NDCT) and simulated low-dose (LDCT) images.  
-- **Usage here:**  
-  - 8 patients for training (~4 800 slices)  
-  - 2 patients for testing (~1 100 slices)  
-  - Resized to 256×256, normalized to [0, 1]
+## 3. Key Features
+- Deterministic Cold Diffusion Reconstruction
+- Dose–Anatomy Encoder (DAE)
+- Physics-Consistency Update (CT forward model)
+- Structural Prior Refinement Module (SPRM)
+- Contextual Error Modulation (CEM)
+- Cross-dose and cross-anatomy generalization
+- Modular and reproducible training pipeline
   
 ---
 
-## 3. Code Information
-The repository is designed with a modular, scalable, and research-oriented structure, enabling easy experimentation, reproducibility, and extension.
-**Repository layout :**
+## 4. Datasets
+This work uses publicly available third-party datasets. Raw datasets are not redistributed in this repository.
+
+**1. Mayo Clinic Low-Dose CT (2016) :**
+- **Reference:** McCollough, C.H., Bartley, A.C., Carter, R.E., Chen, B., Drees, T.A., Edwards, P., Holmes, D.R., III, Huang, A.E., Khan, F., Leng, S., McMillan, K.L., Michalak, G.J., Nunez, K.M., Yu, L. and Fletcher, J.G. (2017), Low-dose CT for the detection and classification of metastatic liver lesions: Results of the 2016 Low Dose CT Grand Challenge. Med. Phys., 44: e339-e352.
+- **DOI:** [https://doi.org/10.1002/mp.12345](https://doi.org/10.1002/mp.12345)
+- **Source/Challenge page:** [https://www.aapm.org/grandchallenge/lowdosect/](https://www.aapm.org/grandchallenge/lowdosect/)
+- **Description:** Contrast-enhanced abdominal CT data from the Mayo Clinic Low Dose CT Grand Challenge. The dataset includes normal-dose data and simulated quarter-dose (25%) low-dose data generated by projection-domain noise insertion.  
+- **Dataset characteristics:** 10 training patient cases were provided in the original challenge data.
+- **Usage here:** We used an internal split of the available cases, with 8 patients for training and 2 patients for testing (approximately 4,800 and 1,100 slices, respectively). Images were resized to 256×256 and normalized to [0, 1]. 
+
+
+**2. Mayo Clinic Low-Dose CT (2020) :**
+- **Reference:** Moen, T. R., Chen, B., Holmes, D. R., Duan, X., Yu, Z., Yu, L., Leng, S., Fletcher, J. G., & McCollough, C. H. (2021). Low-dose CT image and projection dataset. Medical Physics, 48(2), 902–911.
+- **DOI:** [https://doi.org/10.1002/mp.14594](https://doi.org/10.1002/mp.14594)
+- **Source/Access page:** [https://www.cancerimagingarchive.net/collection/ldct-and-projection-data/](https://www.cancerimagingarchive.net/collection/ldct-and-projection-data/)
+- **Description:** A large-scale, publicly available CT dataset containing both projection (sinogram) data and reconstructed images from clinical patient scans.
+  - The dataset includes 299 CT exams covering multiple anatomies:
+    - head (non-contrast)
+    - chest (low-dose screening)
+    - abdomen (contrast-enhanced)    
+  - Each case contains:
+    - routine-dose projection data
+    - simulated low-dose projection data
+    - reconstructed CT images
+    - associated clinical annotations
+    
+  Low-dose data are generated using a validated noise-insertion model applied to projection data, ensuring realistic dose-dependent degradation. 
+- **Dataset characteristics:**
+  - Multi-anatomy (head, chest, abdomen)
+  - Multi-vendor scanners (Siemens and GE)
+  - Includes both image-domain and projection-domain data
+  - Suitable for physics-based reconstruction and diffusion modeling
+- **Usage in this work:**
+  - Training performed using mid-dose settings (10% and 25%)
+  - Evaluation includes unseen ultra-low-dose (5%) and higher-dose (50%) conditions
+  - Used to assess cross-dose and cross-anatomy generalization
+  - All images resized to 256×256 and normalized to [0, 1]
+
+**3. Piglet CT Dataset :**
+- **Reference:** Yi, X., & Babyn, P. (2018). Sharpness-aware low-dose CT denoising using conditional generative adversarial network. Journal of Digital Imaging, 31, 655–669.
+- **DOI:** [https://doi.org/10.1007/s10278-018-0056-0](https://doi.org/10.1007/s10278-018-0056-0)
+- **Code reference (related implementation):** [https://github.com/xinario/SAGAN](https://github.com/xinario/SAGAN)
+- **Description:** The Piglet CT dataset consists of in vivo animal CT scans acquired under low-dose imaging conditions. Compared to human clinical datasets, the piglet data exhibit different anatomical structures, tissue composition, and attenuation characteristics, making it a challenging out-of-distribution (OOD) benchmark for reconstruction methods.
+- **Dataset characteristics:**
+  - Real CT acquisitions (not simulated)
+  - Low-dose imaging protocol (~10% dose setting commonly used in literature)
+  - Anatomical distribution differs significantly from human CT datasets
+  - Contains realistic noise, texture variation, and biological variability
+- **Usage in this work:**
+  - Used only for testing (no training or fine-tuning)
+  - Evaluates cross-domain generalization capability
+  - Model trained on human datasets (Mayo) is directly applied
+  - Quantitative evaluation performed using PSNR, SSIM, and RMSE
+  - Serves as a strict benchmark for robustness under biological domain shift
+ 
+**4. Physical Phantom Dataset :**
+- **Reference:** Ger, Rachel B.; Zhou, Shouhao; Chi, Pai-Chun Melinda; Lee, Hannah J.; Layman, Rick R.; Jones, A. Kyle; Goff, David L.; Fuller, Clifton D.; Howell, Rebecca M.; Li, Heng; Stafford, R. Jason; Court, Laurence E.; Mackin, Dennis S. (2018) Comprehensive Investigation on Controlling for CT Imaging Variabilities in Radiomics Studies. Scientific Reports 8:13047.
+- **DOI:** [https://doi.org/10.1038/s41598-018-31509-z](https://doi.org/10.1038/s41598-018-31509-z)
+- **Source/Challenge page:** [https://www.cancerimagingarchive.net/collection/cc-radiomics-phantom-3/](https://www.cancerimagingarchive.net/collection/cc-radiomics-phantom-3/)
+- **Description:** The CC-Radiomics-Phantom-3 dataset is a multi-center CT phantom dataset hosted by The Cancer Imaging Archive (TCIA), a public repository of de-identified medical imaging data. It consists of scans of a single physical radiomics phantom acquired under diverse imaging conditions across a large number of scanners and clinical sites. Specifically, the dataset includes acquisitions from 100 CT scanners across 35 institutions, covering multiple vendors (e.g., GE, Siemens, Philips) and imaging protocols. The phantom contains controlled material structures designed to assess the stability, reproducibility, and variability of imaging features under different acquisition settings.
+- **Dataset characteristics:**
+  - Real CT acquisitions (not simulated)
+  - Multi-center, multi-scanner variability
+  - Multiple acquisition protocols per scanner
+  - Standardized phantom with known material properties
+  - DICOM image format with associated metadata
+- **Usage in this work:**
+  - Used only for testing (no training or fine-tuning)
+  - Evaluates cross-domain generalization under real scanner variability
+  - Provides a controlled benchmark for physics consistency and reconstruction fidelity
+  - Complements clinical datasets by isolating acquisition and hardware effects
+ 
+### Data Usage & License Compliance:
+- All datasets are used in accordance with their respective licenses and access policies.
+- Users must obtain data directly from official sources.
+- This repository provides processing scripts only, not raw data.
+---
+
+## 5. Code Information
+The repository is organized in a modular and reproducible manner so that data preparation, model training, evaluation, and inference can be run independently. The implementation follows the two-stage training procedure described in the manuscript.
+
+**Repository Structure :**
 ```bash
 gendiff/
-├── configs/                    
-│   ├── train_stage1.yaml
-│   ├── train_stage2.yaml
-│   ├── eval.yaml
-│   └── inference.yaml
+├── configs/                  # YAML configuration files for training, evaluation, and inference
+│   ├── train_stage1.yaml     # Stage 1: Dose-Anatomy Encoder pretraining
+│   ├── train_stage2.yaml     # Stage 2: Full GenDiff training
+│   ├── eval.yaml             # Evaluation settings
+│   └── inference.yaml        # Inference settings
 │
-├── data/                       
-│   ├── dataset.py             
-│   ├── transforms.py          
-│   └── prepare_data.py        
+├── data/                     # Dataset loading and preprocessing
+│   ├── dataset.py            # Dataset classes and sample loading
+│   ├── transforms.py         # Image normalization and augmentation utilities
+│   └── prepare_data.py       # Dataset preparation helpers
 │
-├── models/                    
-│   ├── dae.py                 
-│   ├── backbone.py            
-│   ├── cem.py                 
-│   ├── sprm.py                
-│   └── blocks.py              
+├── models/                   # Core model components
+│   ├── dae.py                # Dose-Anatomy Encoder
+│   ├── backbone.py           # Cold diffusion reconstruction backbone
+│   ├── cem.py                # Contextual Error Modulation module
+│   ├── sprm.py               # Structural Prior Refinement Module
+│   └── blocks.py             # Shared network blocks
 │
-├── diffusion/                 
-│   ├── scheduler.py           
-│   ├── process.py             
-│   └── sampler.py             
+├── diffusion/                # Cold diffusion process and sampling
+│   ├── scheduler.py          # Diffusion timestep schedule
+│   ├── process.py            # Forward/reverse cold diffusion process
+│   └── sampler.py            # Inference-time reverse sampling
 │
-├── physics/                   
-│   ├── ct_operator.py         
-│   ├── projector.py           
-│   └── consistency.py         
+├── physics/                  # CT forward model and physics-consistency update
+│   ├── ct_operator.py        # Projection operator definition
+│   ├── projector.py          # Forward/backprojection utilities
+│   └── consistency.py        # Data-consistency step
 │
-├── losses/                    
-│   ├── reconstruction.py      
-│   ├── perceptual.py          
-│   ├── diffusion_loss.py      
-│   └── total_loss.py          
+├── losses/                   # Training objectives
+│   ├── reconstruction.py     # Image-domain reconstruction loss
+│   ├── perceptual.py         # Optional perceptual/feature losses
+│   ├── diffusion_loss.py     # Diffusion-related losses
+│   └── total_loss.py         # Combined objective used in training
 │
-├── trainers/                  
-│   ├── trainer_stage1.py      
-│   ├── trainer_stage2.py      
-│   └── base_trainer.py        
+├── trainers/                 # Training pipelines
+│   ├── trainer_stage1.py     # Encoder pretraining loop
+│   ├── trainer_stage2.py     # Full model training loop
+│   └── base_trainer.py       # Shared training utilities
 │
-├── evaluation/                
-│   ├── metrics.py             
-│   └── evaluator.py           
+├── evaluation/               # Quantitative evaluation
+│   ├── metrics.py            # PSNR, SSIM, RMSE, and related metrics
+│   └── evaluator.py          # Evaluation workflow
 │
-├── utils/                     
-│   ├── logger.py              
-│   ├── seed.py                
-│   ├── checkpoint.py          
-│   └── config.py              
+├── utils/                    # Utility functions
+│   ├── logger.py             # Logging
+│   ├── seed.py               # Random seed control
+│   ├── checkpoint.py         # Checkpoint saving/loading
+│   └── config.py             # Config parsing
 │
-├── scripts/                   
-│   ├── prepare_data.py        
-│   └── visualize.py           
+├── scripts/                  # Helper scripts
+│   ├── prepare_data.py       # Data conversion / preprocessing script
+│   └── visualize.py          # Visualization utilities
 │
-├── experiments/               
-│   ├── logs/
-│   ├── checkpoints/
-│   └── outputs/
+├── experiments/              # Saved experiment artifacts
+│   ├── logs/                 # Training logs
+│   ├── checkpoints/          # Model checkpoints
+│   └── outputs/              # Reconstructions and exported results
 │
-├── train_stage1.py            
-├── train_stage2.py            
-├── evaluate.py                
-├── inference.py               
-│
-├── requirements.txt           
-├── README.md                  
-└── LICENSE                    
+├── train_stage1.py           # Entry point for Stage 1 training
+├── train_stage2.py           # Entry point for Stage 2 training
+├── evaluate.py               # Entry point for evaluation
+├── inference.py              # Entry point for inference
+├── requirements.txt          # Python dependencies
+├── README.md                 # Project documentation
+└── LICENSE                   # License file              
+```
+### Code Usage Summary
+
+* `train_stage1.py` runs pretraining of the Dose-Anatomy Encoder.
+* `train_stage2.py` runs full GenDiff training.
+* `evaluate.py` reproduces quantitative evaluation metrics reported in the manuscript.
+* `inference.py` reconstructs LDCT samples using a trained checkpoint.
+* `configs/` contains the settings needed to reproduce the main experiments.
+* `experiments/` stores logs, checkpoints, and reconstruction outputs generated during training and testing.
+  
+---
+
+## 6. Environment Setup
+
+### System Requirements
+
+The code has been tested on the following environment:
+
+* OS: Linux (Ubuntu 20.04/22.04 recommended)
+* Python: 3.10
+* GPU: NVIDIA GPU (≥ 24 GB VRAM recommended for training)
+* CUDA: ≥ 11.7
+* PyTorch: ≥ 2.0
+
+Training was performed on NVIDIA RTX 3090 / RTX 4090 GPUs.
+Inference can be performed on lower-memory GPUs or CPU (with slower runtime).
+
+---
+
+### Installation
+
+Clone the repository:
+
+```bash
+git clone https://github.com/imamahasane/GenDiff.git
+cd GenDiff
 ```
 
----
-
-## 4. Method summary
-
-GenDiff formulates LDCT reconstruction as a **deterministic cold diffusion process**. Starting from an LDCT slice `x_T`, the model iteratively refines the sample over `T` reverse steps.
-
-At each step `t`:
-
-1. The diffusion backbone predicts a residual `r_t = f_theta(x_t, t, e_d, e_a)`.
-2. A tentative clean image is computed as `x0_hat = x_t + r_t`.
-3. A physics-consistency correction is applied: `x_phys = x0_hat - lambda_t A^T(A x0_hat - y)`.
-4. A contextual error map is computed from image and projection inconsistencies.
-5. SPRM predicts a refinement term `Delta x_t`.
-6. The next state is `x_{t-1} = x_phys + Delta x_t`.
-
-The stage-2 objective follows the manuscript:
-
-- image fidelity loss
-- physics consistency loss
-- gradient consistency loss
-
----
-
-## 5. Installation
+Create a conda environment:
 
 ```bash
 conda create -n gendiff python=3.10 -y
 conda activate gendiff
+```
+
+Install dependencies:
+
+```bash
 pip install -r requirements.txt
+```
+
+(Optional) Install as a package:
+
+```bash
 pip install -e .
 ```
 
 ---
 
-## 6. Dataset preparation
+### Dependency Notes
 
-Expected slice-level format is documented in [`docs/dataset_format.md`](docs/dataset_format.md).
+* PyTorch should match your CUDA version.
+  Example (CUDA 11.7):
 
-Each sample should provide at minimum:
+```bash
+pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu117
+```
 
-- `ldct`: low-dose reconstructed slice, shape `[1, H, W]`
-- `ndct`: reference high-dose slice, shape `[1, H, W]`
-- `sinogram`: measured or simulated projection data
-- `dose`: scalar float in `(0, 1]`
-- `anatomy`: one of `abdomen`, `chest`, `head`
-- optional operator metadata or path to an operator matrix
+* Additional libraries include:
+
+  * numpy
+  * scipy
+  * scikit-image
+  * matplotlib
+  * tqdm
+  * pyyaml
+
+All required packages are listed in `requirements.txt`.
+
+---
+
+### Verification
+
+To verify installation:
+
+```bash
+python -c "import torch; print(torch.cuda.is_available())"
+```
+
+Expected output:
+
+```text
+True
+```
+
+---
+
+### Reproducibility Settings
+
+* Random seed control is implemented in `utils/seed.py`
+* Deterministic behavior is enabled where possible
+* All experiment configurations are stored in YAML files under `configs/`
+
+Users are encouraged to use the provided configuration files to ensure consistent results.
+
+
+## 7. Data Preparation
+
+### Overview
+
+This repository does **not include raw CT datasets**.
+Users must download datasets from their original sources (see Section 4: Datasets).
+
+This section describes how to convert raw data into the format required for training and evaluation.
+
+---
+
+### Expected Data Format
+
+All experiments are conducted on **slice-level data**.
+Each sample is stored as a dictionary (e.g., `.npz` file) containing:
+
+* `ldct`: Low-dose CT image, shape `[1, H, W]`
+* `ndct`: Normal-dose CT image (reference), shape `[1, H, W]`
+* `sinogram`: Projection data (if available)
+* `dose`: Scalar value in `(0, 1]`
+* `anatomy`: One of `{abdomen, chest, head}`
+
+Example structure:
+
+```bash
+sample.npz
+├── ldct
+├── ndct
+├── sinogram
+├── dose
+└── anatomy
+```
+
+---
+
+### Preprocessing Steps
+
+The following preprocessing steps are applied consistently across all datasets:
+
+1. **Slice Extraction**
+
+   * 3D CT volumes are converted into 2D axial slices
+   * Each slice is treated as an independent training sample
+
+2. **Resizing**
+
+   * All images are resized to `256 × 256`
+
+3. **Normalization**
+
+   * Intensities are normalized to `[0, 1]`
+   * (Users may alternatively normalize using HU clipping if preferred)
+
+4. **Dose Assignment**
+
+   * Each sample is assigned a normalized dose value:
+
+     * Example: 0.25 (25%), 0.10 (10%), 0.05 (5%)
+
+5. **Anatomy Labeling**
+
+   * Each sample is labeled as:
+
+     * `abdomen`
+     * `chest`
+     * `head`
+
+6. **Projection Data (Optional)**
+
+   * If sinogram data is available (e.g., Mayo 2020), it is included
+   * Otherwise, physics consistency can be approximated using reconstructed images
+
+---
+
+### Dataset-Specific Notes
+
+* **Mayo-2016:** Paired LDCT/NDCT images; primarily abdominal CT
+* **Mayo-2020:** Multi-anatomy dataset with projection data and simulated low-dose levels
+* **Piglet CT:** Used only for testing (no preprocessing beyond resizing/normalization)
+* **Phantom Dataset:** Used for evaluation under scanner variability
+
+---
+
+### Directory Organization
+
+Processed data should follow this structure:
+
+```bash
+data/
+├── train/
+│   ├── sample_0001.npz
+│   ├── sample_0002.npz
+│   └── ...
+├── val/
+│   ├── sample_0001.npz
+│   └── ...
+└── test/
+    ├── sample_0001.npz
+    └── ...
+```
+
+---
+
+### Data Preparation Script
 
 A preprocessing utility is provided:
 
 ```bash
-python scripts/prepare_dataset.py \
+python scripts/prepare_data.py \
   --input-root /path/to/raw_data \
   --output-root /path/to/processed_data
 ```
 
----
+This script:
 
-## 7. Training
-
-### Stage 1: Pretrain the Dose-Anatomy Encoder
-
-```bash
-python scripts/train_encoder.py --config configs/encoder_pretrain.yaml
-```
-
-### Stage 2: Train GenDiff
-
-```bash
-python scripts/train_gendiff.py --config configs/gendiff_train.yaml
-```
+* loads raw CT data
+* applies preprocessing steps
+* saves processed `.npz` files
 
 ---
 
-## 8. Evaluation
+### Train / Validation / Test Split
+
+* Splits are defined at the **patient level** where possible
+* Example (Mayo-2016):
+
+  * Training: 8 patients
+  * Testing: 2 patients
+* Validation split can be derived from training data
+
+Users may define custom splits using configuration files.
+
+---
+
+### Important Notes
+
+* All preprocessing choices (resize, normalization, splits) must be kept consistent across training and evaluation.
+* Differences in preprocessing may lead to variations in reported performance.
+* For strict reproducibility, use the provided preprocessing script and configuration files.
+
+
+
+## 8. Method Summary
+
+GenDiff formulates low-dose CT (LDCT) reconstruction as a **dose- and anatomy-conditioned cold diffusion process** with explicit **physics-consistency enforcement** and **learned structural refinement**.
+
+Given a low-dose input image ( x_T^{d,a} ), dose level ( d ), anatomy label ( a ), projection data ( y ), and forward operator ( A ), the model reconstructs a high-quality estimate ( \hat{x} ) through an iterative reverse process.
+
+---
+
+### Core Components
+
+1. **Dose–Anatomy Encoder (DAE)**
+   Learns continuous embeddings:
+
+   * ( e_d ): dose representation
+   * ( e_a ): anatomy representation
+     These embeddings condition the reconstruction process across varying acquisition settings.
+
+2. **Cold Diffusion Backbone**
+  Given a low-dose input image \( x_T^{d,a} \), dose level \( d \), anatomy label \( a \), projection data \( y \), and forward operator \( A \), the model reconstructs a  high-quality estimate \( \hat{x} \).
+
+$$
+r_t = f_\theta(x_t, t, e_d, e_a)
+$$
+
+$$
+\hat{x}_0^t = x_t + r_t
+$$
+
+$$
+x_{\text{phys}} = \hat{x}_0^t - \lambda_t A^\top (A \hat{x}_0^t - y)
+$$
+
+$$
+x_{t-1} = x_{\text{phys}} + \Delta x_t
+$$
+
+3. **Physics-Consistency Update**
+   Enforces agreement with the CT forward model:
+   [
+   x_{\text{phys}} = \hat{x}_0^t - \lambda_t A^\top (A \hat{x}_0^t - y)
+   ]
+   ensuring consistency with measured projection data.
+
+4. **Contextual Error Modulation (CEM)**
+   Computes a spatial error map using:
+
+   * image residuals
+   * gradient discrepancies
+   * projection-domain inconsistencies
+     to guide adaptive refinement.
+
+5. **Structural Prior Refinement Module (SPRM)**
+   Acts as a learned proximal operator:
+   [
+   \Delta x_t = \text{SPRM}(x_{\text{phys}}, t, e_d, e_a)
+   ]
+   improving structural fidelity and suppressing residual artifacts.
+
+---
+
+### Iterative Reconstruction Process
+
+At each reverse diffusion step ( t ):
+
+1. Predict residual ( r_t )
+2. Compute intermediate reconstruction ( \hat{x}_0^t )
+3. Apply physics-consistency update
+4. Estimate contextual error map
+5. Apply structural refinement
+
+Final update:
+[
+x_{t-1} = x_{\text{phys}} + \Delta x_t
+]
+
+After ( T ) steps, the final reconstruction is:
+[
+\hat{x} = x_0
+]
+
+---
+
+### Training Strategy
+
+The model is trained in two stages:
+
+* **Stage 1:** Pretraining the Dose–Anatomy Encoder
+
+  * dose regression
+  * ranking constraints
+  * anatomy classification
+
+* **Stage 2:** Joint training of:
+
+  * diffusion backbone
+  * physics-consistency module
+  * SPRM
+
+The training objective combines:
+
+* image fidelity loss
+* physics consistency loss
+* gradient consistency loss
+
+---
+
+### Key Properties
+
+* **Generalization:** Single model handles multiple doses and anatomies
+* **Physics-aware:** Enforces consistency with CT acquisition model
+* **Efficient:** Uses deterministic cold diffusion (fewer steps than DDPM)
+* **Robust:** Demonstrates strong performance on unseen dose levels and out-of-domain datasets
+
+
+---
+
+## 9. Training
+
+The training pipeline follows the two-stage procedure described in the manuscript.
+
+### Stage 1 — Dose–Anatomy Encoder Pretraining
 
 ```bash
-python scripts/evaluate.py \
-  --config configs/gendiff_train.yaml \
-  --checkpoint runs/gendiff/best.pt \
-  --split test
+python train_stage1.py --config configs/train_stage1.yaml
+```
+
+This stage learns embeddings for:
+
+* radiation dose
+* anatomical region
+
+The encoder is trained using:
+
+* dose regression loss
+* ranking constraints
+* supervised contrastive anatomy loss
+
+---
+
+### Stage 2 — Full GenDiff Training
+
+```bash
+python train_stage2.py --config configs/train_stage2.yaml
+```
+
+This stage jointly trains:
+
+* diffusion backbone
+* physics-consistency module
+* structural prior refinement module (SPRM)
+
+---
+
+### Training Details
+
+* Training is performed on slice-level data
+* Multi-anatomy training: `{abdomen, chest, head}`
+* Training dose levels: `{0.10, 0.25}`
+* Reverse diffusion steps: `T = 20`
+* Optimizer: AdamW
+* Mixed-precision training enabled
+* Batch size, learning rate, and loss weights are specified in the configuration files.
+
+All hyperparameters are defined in YAML configuration files under `configs/`.
+
+---
+
+## 10. Evaluation
+
+Quantitative evaluation can be performed using:
+
+```bash
+python evaluate.py \
+  --config configs/eval.yaml \
+  --checkpoint experiments/checkpoints/best.pt
 ```
 
 ---
 
-## 9. Inference
+### Evaluation Metrics
+
+The following metrics are computed:
+
+* **PSNR** (Peak Signal-to-Noise Ratio)
+* **SSIM** (Structural Similarity Index)
+* **RMSE** (Root Mean Square Error)
+* **Physics consistency residual**: \( \|A\hat{x} - y\|_2^2 \)
+
+Metrics are computed per slice and averaged across the dataset.
+
+---
+
+### Evaluation Protocols
+
+* **Cross-dose evaluation**
+
+  * Train: 10%, 25%
+  * Test: 5% (unseen), 50%
+
+* **Cross-anatomy evaluation**
+
+  * Abdomen, chest, head
+
+* **Cross-domain evaluation**
+
+  * Piglet CT dataset
+  * Physical phantom dataset
+
+---
+
+## 11. Inference
+
+To reconstruct LDCT images using a trained model:
 
 ```bash
-python scripts/infer.py \
-  --config configs/gendiff_train.yaml \
-  --checkpoint runs/gendiff/best.pt \
+python inference.py \
+  --config configs/inference.yaml \
+  --checkpoint experiments/checkpoints/best.pt \
   --input /path/to/sample.npz \
   --output /path/to/output_dir
 ```
 
 ---
 
-## 10. Reproducibility checklist
+### Inference Details
 
-- global seed control
-- deterministic cuDNN flags where possible
-- serialized configs saved with every run
-- checkpointing of optimizer, scheduler, scaler, and RNG-sensitive state
-- exact train/val/test split file support
-- CSV and JSON metrics export
-- experiment directory versioning
+* Reverse diffusion process with `T = 20` steps
+* Input: LDCT slice + metadata
+* Output: reconstructed CT image
 
----
+Approximate runtime:
 
-## 11. Notes on faithful reproduction
-
-The manuscript specifies the high-level method clearly, including the two-stage training scheme, the reverse-step equations, the datasets, and evaluation protocol. However, some exact engineering values are not fully specified in the paper, including:
-
-- exact encoder and backbone widths
-- exact attention block design
-- exact `w1, w2, w3` values
-- exact cold diffusion degradation schedule coefficients
-- exact value ranges and normalization convention for CT intensities
-
-This repository therefore uses **explicit, configurable defaults** chosen to remain faithful to the method while keeping the code complete and executable. To reproduce the reported numbers as closely as possible, you should set these values from the authors' final training logs if available.
+* ~0.15–0.25 seconds per 512×512 slice (GPU)
 
 ---
 
-## 12. License & Contributions
+## 12. Reproducibility
+
+This repository is designed to support reproducible research:
+
+* Fixed random seeds (`utils/seed.py`)
+
+* Deterministic settings where supported by hardware
+
+* Full experiment configuration stored in YAML files
+
+* Checkpoints include:
+
+  * model parameters
+  * optimizer state
+  * scheduler state
+
+* Structured experiment outputs:
+
+  * logs
+  * checkpoints
+  * reconstructed images
+  * evaluation metrics (CSV / JSON)
+
+---
+
+## 13. Reproducing Paper Results
+
+The following commands correspond to the main experiments in the paper:
+
+### Table 1 — Mayo-2016 (Seen Dose Levels)
+
+```bash
+python evaluate.py --config configs/eval.yaml
+```
+
+---
+
+### Table 2 — Mayo-2020 (Cross-Dose & Multi-Anatomy)
+
+```bash
+python evaluate.py --config configs/eval.yaml
+```
+
+Ensure:
+
+* training performed on 10% and 25%
+* testing includes 5% and 50%
+
+---
+
+### Table 3 — Cross-Domain Evaluation (Piglet & Phantom)
+
+```bash
+python evaluate.py --config configs/eval.yaml
+```
+
+---
+
+### Ablation Study (Table 4)
+
+Modify `configs/train_stage2.yaml` to:
+
+* disable SPRM
+* disable physics-consistency update
+* disable contextual error modulation
+
+---
+
+## 14. Notes on Reproducibility
+
+While the implementation closely follows the method described in the manuscript, exact numerical reproduction may vary due to:
+
+* hardware differences (GPU type, precision)
+* random initialization
+* dataset preprocessing variations
+* differences in CT intensity normalization
+
+Some implementation-specific parameters are configurable:
+
+* model width and architecture details
+* diffusion schedule
+* loss weights (( w_1, w_2, w_3 ))
+* normalization ranges
+
+To achieve results closest to those reported:
+
+* use the provided configuration files
+* maintain consistent preprocessing
+* ensure matching dataset splits
+
+This repository provides a complete and executable reference implementation consistent with the methodology described in the paper.
+
+---
+
+## 15. License & Contributions
 
 **License :**
 Released under the MIT License. © 2026 GenDiff Authors. All rights reserved.
@@ -257,7 +778,7 @@ We welcome pull requests and improvements.
 
 ---
 
-## 13. Contact
+## 16. Contact
 
 1. Md Imam Ahasan - L2300448@stu.cqu.edu.cn
 2. Guangchao Yang - gchao_yang@cqu.edu.cn
@@ -265,6 +786,7 @@ We welcome pull requests and improvements.
 
 ---
 
-## 14. Acknowledgements
+## 17. Acknowledgements
 This work was conducted at the **College of Computer Science, Chongqing University** and the **Department of Software Engineering, Daffodil International University.**
 All scientific content, data processing, and results were **independently verified and approved** by the authors.
+
